@@ -285,6 +285,44 @@ fakeModel.prototype.findAll =  function (options) {
 	});
 };
 
+/**
+ * Executes a mock query to count of the instances with any provided options. Without
+ * any other configuration, the default behavior when no queueud query result is present
+ * is to create an array of a single result based on the where query in the options and
+ * wraps it in a promise.
+ * 
+ * To turn off this behavior, the `$autoQueryFallback` option on the model should be set
+ * to `false`.
+ * 
+ * @example
+ * // This is an example of the default behavior with no queued results
+ * // If there is a queued result or failure, that will be returned instead
+ * User.count({
+ * 	where: {
+ * 		email: 'myEmail@example.com',
+ * 	},
+ * }).then(function (results) {
+ * 	// results is an array of 1
+ * 	results[0].get('email') === 'myEmail@example.com'; // true
+ * });
+ * 
+ * @instance
+ * @param {Object} [options] Options for the count query
+ * @param {Object} [options.where] Values that any automatically created Instances should have
+ * @return {Promise<Instance[]>} result returned by the mock query
+ **/
+fakeModel.prototype.count =  function (options) {
+	var self = this;
+	
+	return this.$query({
+		query: "count",
+		queryOptions: arguments,
+		fallbackFn: !this.options.autoQueryFallback ? null : function () {
+			return Promise.resolve([ self.build(options ? options.where : {}) ].length);
+		},
+	});
+};
+
 
 /**
  * Executes a mock query to find all of the instances with any provided options and also return 
@@ -593,6 +631,37 @@ fakeModel.prototype.update = function (values, options) {
 	
 	return this.$query({
 		query: "update",
+		queryOptions: arguments,
+		options: options,
+		includeAffectedRows: !!options.returning,
+		fallbackFn: !this.options.autoQueryFallback ? null : function () {
+			if(!options.returning) {
+				return Promise.resolve([1]);
+			}
+			return Promise.resolve([ 1, [self.build(values)] ]);
+		},
+	});
+};
+
+/**
+ * Executes a mock query to decrement a set of instances. Without any other configuration,
+ * the default behavior when no queueud query result is present is to create 1 new
+ * Instance that matches the where value from the first parameter and returns a Promise
+ * with an array of the count of affected rows (always 1) and the affected rows if the
+ * `returning` option is set to true
+ * 
+ * @instance
+ * @param {Object} values Values to build the Instance
+ * @param {Object} [options] Options to use for the decrement
+ * @param {Object} [options.returning] Whether or not to include the decrement models in the return
+ * @return {Promise<Array>} Promise with an array of the number of affected rows and the affected rows themselves if `options.returning` is true
+ **/
+fakeModel.prototype.decrement = function (values, options) {
+	var self = this;
+	options = options || {};
+	
+	return this.$query({
+		query: "decrement",
 		queryOptions: arguments,
 		options: options,
 		includeAffectedRows: !!options.returning,

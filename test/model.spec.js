@@ -321,6 +321,56 @@ describe('Model', function () {
 			mdl.update(vals, opts);
 		});
 	});
+
+	describe('#decrement', function () {
+		var mdl;
+		beforeEach(function () {
+			mdl = new Model('foo');
+		});
+		
+		it('should pass back default of 1 row decrementd', function (done) {
+			var vals = {
+				'baz' : 'bin'
+			};
+			
+			mdl.decrement(vals).fallbackFn().spread(function (number, rows) {
+				number.should.equal(1);
+				done();
+			}).catch(done);
+		});
+		
+		it('should pass back row decrementd when returning option is included', function (done) {
+			var vals = {
+				'baz' : 'bin'
+			};
+			
+			mdl.decrement(vals, {returning: true})
+				.fallbackFn().spread(function (number, rows) {
+					rows.should.be.Array();
+					rows[0]._args[0].should.have.property('baz').which.is.exactly('bin');
+					done();
+				}).catch(done);
+		});
+		
+		it('should not pass along a fallback function if auto fallback is turned off', function () {
+			mdl.options.autoQueryFallback = false;
+			should.not.exist(mdl.decrement().fallbackFn);
+		});
+		
+		it('should pass query info to the QueryInterface instance', function(done) {
+			var vals = {};
+			var opts = {};
+			
+			mdl.$query = function(options) {
+				options.query.should.equal('decrement');
+				options.queryOptions.length.should.equal(2);
+				options.queryOptions[0].should.equal(vals);
+				options.queryOptions[1].should.equal(opts);
+				done();
+			}
+			mdl.decrement(vals, opts);
+		});
+	});
 	
 	describe('#findOne', function () {
 		var mdl;
