@@ -513,9 +513,21 @@ fakeModel.prototype.build = function (values, options) {
  * @param {Object} options Map of values that the instance should have
  * @return {Promise<Instance>} a promise that resolves after saving a new instance with the given properties
  **/
-fakeModel.prototype.create = function (obj) {
-	return this.build(obj).save();
-};
+ fakeModel.prototype.create = function (obj) {
+ 	// return this.build(obj).save(); original return
+ 	var self = this;
+ 	
+ 	return this.$query({
+ 		query: "create",
+ 		queryOptions: arguments,
+ 		includeCreated: true,
+ 		fallbackFn: !this.options.autoQueryFallback ? null : function () {
+ 			return self.build(obj.where).save().then(function (result) {
+ 					return Promise.resolve(result);
+ 				});
+ 		},
+ 	});
+ };
 /**
  * Executes a mock query to find or create an Instance with the given properties. Without
  * any other configuration, the default behavior when no queueud query result is present
